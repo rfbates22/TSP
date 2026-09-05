@@ -746,8 +746,6 @@
                         <th>Associated Benchmark / ETF</th>
                         <th>Allocation (%)</th>
                         <th>ESTIMATED Daily Return</th>
-                        <th>Prev. Value ($)</th>
-                        <th>ESTIMATED Value ($)</th>
                     </tr>
                 </thead>
                 <tbody id="allocationTable">
@@ -1102,8 +1100,6 @@
         Object.keys(fundMeta).forEach(fundKey => {
             const pct = alloc[fundKey];
             const fundReturn = returns[fundKey];
-            const prevFundVal = baselinePortfolioValue * (pct / 100);
-            const estFundVal = prevFundVal * (1 + (fundReturn / 100));
             
             const row = document.createElement("tr");
             row.innerHTML = `
@@ -1111,8 +1107,6 @@
                 <td>${fundMeta[fundKey].etf}</td>
                 <td>${pct.toFixed(2)}%</td>
                 <td class="${fundReturn >= 0 ? 'pos' : 'neg'}">${fundReturn >= 0 ? '+' : ''}${fundReturn.toFixed(4)}%</td>
-                <td>$${prevFundVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                <td>$${estFundVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
             `;
             tableBody.appendChild(row);
         });
