@@ -170,7 +170,7 @@
 
         .predictions-controls-row {
             display: flex;
-            gap: 24px;
+            gap: 20px;
             flex-wrap: wrap;
             align-items: center;
             background: var(--input-bg);
@@ -850,9 +850,12 @@
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
-                <label for="simulationAmountSelect" style="margin-bottom: 6px;">Simulation Portfolio Amount:</label>
+                <label for="simulationAmountSelect" style="margin-bottom: 6px;">Starting Portfolio Amount:</label>
                 <select id="simulationAmountSelect" onchange="renderPredictionsTable()">
-                    <option value="100000">$100,000</option>
+                    <option value="0">$0</option>
+                    <option value="10000">$10,000</option>
+                    <option value="50000">$50,000</option>
+                    <option value="100000" selected>$100,000</option>
                     <option value="200000">$200,000</option>
                     <option value="300000">$300,000</option>
                     <option value="400000">$400,000</option>
@@ -863,6 +866,16 @@
                     <option value="900000">$900,000</option>
                     <option value="1000000">$1,000,000</option>
                 </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="annualDepositInput" style="margin-bottom: 6px;">Annual Deposit ($):</label>
+                <input type="number" id="annualDepositInput" value="5000" min="0" step="500" style="width: 130px;" oninput="renderPredictionsTable()">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="depositYearsInput" style="margin-bottom: 6px;">Deposit Duration (Years):</label>
+                <input type="number" id="depositYearsInput" value="20" min="1" max="50" style="width: 100px;" oninput="renderPredictionsTable()">
             </div>
         </div>
 
@@ -1215,13 +1228,14 @@
         return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     }
 
-    function projectCompoundedValue(startVal, annualRate, years, isMonteCarlo = false, portfolioAlloc = null) {
+    function projectCompoundedValue(startVal, annualRate, years, isMonteCarlo = false, portfolioAlloc = null, annualDeposit = 0, depositYears = 0) {
         let currentVal = startVal;
 
         if (!isMonteCarlo || !portfolioAlloc) {
             const r = annualRate / 100;
-            for (let i = 0; i < years; i++) {
-                currentVal = currentVal * (1 + r);
+            for (let i = 1; i <= years; i++) {
+                const deposit = i <= depositYears ? annualDeposit : 0;
+                currentVal = (currentVal + deposit) * (1 + r);
             }
             return Math.round(currentVal);
         }
@@ -1231,9 +1245,10 @@
             portfolioVolatility += (portfolioAlloc[key] / 100) * coreFundVolatilities[key];
         });
 
-        for (let i = 0; i < years; i++) {
+        for (let i = 1; i <= years; i++) {
             const sampledRate = (annualRate + getRandomGaussian() * portfolioVolatility) / 100;
-            currentVal = currentVal * (1 + sampledRate);
+            const deposit = i <= depositYears ? annualDeposit : 0;
+            currentVal = (currentVal + deposit) * (1 + sampledRate);
         }
         return Math.round(Math.max(0, currentVal));
     }
@@ -1241,16 +1256,19 @@
     function renderPredictionsTable() {
         const selectedFund = document.getElementById("lFundSelect").value;
         const activeAllocations = getActiveAllocations();
-        const baseVal = parseFloat(document.getElementById("simulationAmountSelect").value) || 100000;
+        const baseVal = parseFloat(document.getElementById("simulationAmountSelect").value) || 0;
+        const annualDeposit = parseFloat(document.getElementById("annualDepositInput").value) || 0;
+        const depositYears = parseInt(document.getElementById("depositYearsInput").value) || 0;
         const isMonteCarlo = document.getElementById("monteCarloSwitch").checked;
 
         document.getElementById("monteCarloLabel").innerText = isMonteCarlo ? "ON (Simulated Volatility)" : "OFF (Standard Return)";
         
         const formattedBaseStr = `$${baseVal.toLocaleString('en-US')}`;
-        document.getElementById("colHeader1Yr").innerText = `Est. 1-Yr Growth (${formattedBaseStr})`;
-        document.getElementById("colHeader5Yr").innerText = `Est. 5-Yr Growth (${formattedBaseStr})`;
-        document.getElementById("colHeader10Yr").innerText = `Est. 10-Yr Growth (${formattedBaseStr})`;
-        document.getElementById("colHeader20Yr").innerText = `Est. 20-Yr Growth (${formattedBaseStr})`;
+        const depositNotice = annualDeposit > 0 ? ` + $${annualDeposit.toLocaleString('en-US')}/yr` : '';
+        document.getElementById("colHeader1Yr").innerText = `Est. 1-Yr Growth (${formattedBaseStr}${depositNotice})`;
+        document.getElementById("colHeader5Yr").innerText = `Est. 5-Yr Growth (${formattedBaseStr}${depositNotice})`;
+        document.getElementById("colHeader10Yr").innerText = `Est. 10-Yr Growth (${formattedBaseStr}${depositNotice})`;
+        document.getElementById("colHeader20Yr").innerText = `Est. 20-Yr Growth (${formattedBaseStr}${depositNotice})`;
 
         const tbody = document.getElementById("predictionsTable");
         tbody.innerHTML = "";
@@ -1266,10 +1284,10 @@
             const stocksPct = alloc.C + alloc.S + alloc.I;
             const risk = calculateRiskLevel(stocksPct);
 
-            const val1Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 1, isMonteCarlo, alloc);
-            const val5Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 5, isMonteCarlo, alloc);
-            const val10Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 10, isMonteCarlo, alloc);
-            const val20Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 20, isMonteCarlo, alloc);
+            const val1Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 1, isMonteCarlo, alloc, annualDeposit, depositYears);
+            const val5Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 5, isMonteCarlo, alloc, annualDeposit, depositYears);
+            const val10Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 10, isMonteCarlo, alloc, annualDeposit, depositYears);
+            const val20Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 20, isMonteCarlo, alloc, annualDeposit, depositYears);
 
             const isSelected = (fundName === selectedFund);
             const row = document.createElement("tr");
