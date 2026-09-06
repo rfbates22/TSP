@@ -111,6 +111,13 @@
             letter-spacing: -0.03em;
         }
 
+        .subtitle {
+            margin: 4px 0 0 0;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
         .theme-toggle-btn {
             background: var(--input-bg);
             border: 1px solid var(--border);
@@ -595,7 +602,10 @@
 <div class="container">
     <div class="header-section">
         <div class="header-status">
-            <h1>TSP L Fund Return Predictor</h1>
+            <div>
+                <h1>TSP L Fund Return Predictor</h1>
+                <p class="subtitle">Built by Bob Bates using AI Models</p>
+            </div>
             <div class="header-controls-right">
                 <button class="theme-toggle-btn" onclick="toggleTheme()">
                     <span id="themeIcon">☀️</span> <span id="themeLabel">Light Mode</span>
