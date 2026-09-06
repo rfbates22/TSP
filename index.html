@@ -1279,11 +1279,25 @@
         return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
     }
 
-    function projectCompoundedValue(startVal, annualRate, years, isMonteCarlo = false, portfolioAlloc = null, annualDeposit = 0, depositYears = 0) {
+    function generateUnderlyingMarketReturns(years) {
+        const yearlyReturns = [];
+        for (let yr = 0; yr < years; yr++) {
+            const fundReturns = {};
+            Object.keys(coreFund5YrAvg).forEach(key => {
+                const mean = coreFund5YrAvg[key];
+                const vol = coreFundVolatilities[key];
+                fundReturns[key] = mean + getRandomGaussian() * vol;
+            });
+            yearlyReturns.push(fundReturns);
+        }
+        return yearlyReturns;
+    }
+
+    function projectCompoundedValue(startVal, years, portfolioAlloc, marketSimulation = null, grossAnnualReturn = 0, annualDeposit = 0, depositYears = 0) {
         let currentVal = startVal;
 
-        if (!isMonteCarlo || !portfolioAlloc) {
-            const r = annualRate / 100;
+        if (!marketSimulation) {
+            const r = grossAnnualReturn / 100;
             for (let i = 1; i <= years; i++) {
                 const deposit = i <= depositYears ? annualDeposit : 0;
                 currentVal = (currentVal + deposit) * (1 + r);
@@ -1291,13 +1305,15 @@
             return Math.round(currentVal);
         }
 
-        let portfolioVolatility = 0;
-        Object.keys(coreFundVolatilities).forEach(key => {
-            portfolioVolatility += (portfolioAlloc[key] / 100) * coreFundVolatilities[key];
-        });
-
         for (let i = 1; i <= years; i++) {
-            const sampledRate = (annualRate + getRandomGaussian() * portfolioVolatility) / 100;
+            const yearFundReturns = marketSimulation[i - 1];
+            let weightedYearlyReturn = 0;
+            
+            Object.keys(yearFundReturns).forEach(key => {
+                weightedYearlyReturn += (portfolioAlloc[key] / 100) * yearFundReturns[key];
+            });
+
+            const sampledRate = weightedYearlyReturn / 100;
             const deposit = i <= depositYears ? annualDeposit : 0;
             currentVal = (currentVal + deposit) * (1 + sampledRate);
         }
@@ -1324,6 +1340,8 @@
         const tbody = document.getElementById("predictionsTable");
         tbody.innerHTML = "";
 
+        const sharedMarketSimulation = isMonteCarlo ? generateUnderlyingMarketReturns(20) : null;
+
         Object.keys(activeAllocations).forEach(fundName => {
             const alloc = activeAllocations[fundName];
             let grossAnnualReturn = 0;
@@ -1335,10 +1353,10 @@
             const stocksPct = alloc.C + alloc.S + alloc.I;
             const risk = calculateRiskLevel(stocksPct);
 
-            const val1Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 1, isMonteCarlo, alloc, annualDeposit, depositYears);
-            const val5Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 5, isMonteCarlo, alloc, annualDeposit, depositYears);
-            const val10Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 10, isMonteCarlo, alloc, annualDeposit, depositYears);
-            const val20Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 20, isMonteCarlo, alloc, annualDeposit, depositYears);
+            const val1Yr = projectCompoundedValue(baseVal, 1, alloc, sharedMarketSimulation, grossAnnualReturn, annualDeposit, depositYears);
+            const val5Yr = projectCompoundedValue(baseVal, 5, alloc, sharedMarketSimulation, grossAnnualReturn, annualDeposit, depositYears);
+            const val10Yr = projectCompoundedValue(baseVal, 10, alloc, sharedMarketSimulation, grossAnnualReturn, annualDeposit, depositYears);
+            const val20Yr = projectCompoundedValue(baseVal, 20, alloc, sharedMarketSimulation, grossAnnualReturn, annualDeposit, depositYears);
 
             const isSelected = (fundName === selectedFund);
             const row = document.createElement("tr");
