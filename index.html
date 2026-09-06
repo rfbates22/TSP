@@ -269,6 +269,19 @@
             margin-bottom: 36px;
         }
 
+        .disclaimer-inline-notice {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .disclaimer-inline-notice a {
+            color: var(--primary);
+            text-decoration: underline;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
         .button-row {
             display: flex;
             gap: 12px;
@@ -559,6 +572,15 @@
             border: 1px solid var(--border);
         }
 
+        .help-section.disclaimer-banner {
+            background: rgba(234, 179, 8, 0.08);
+            border: 1px solid rgba(234, 179, 8, 0.3);
+        }
+
+        .help-section.disclaimer-banner h3 {
+            color: #eab308;
+        }
+
         .help-section h3 {
             margin-top: 0;
             margin-bottom: 10px;
@@ -691,10 +713,13 @@
     </div>
 
     <div class="button-container-stack">
+        <div class="disclaimer-inline-notice">
+            Notice: This tool provides hypothetical estimates for personal educational and testing purposes only and does not constitute financial, investment, or tax advice. <a onclick="openHelpModal()">See full disclaimer & terms.</a>
+        </div>
         <div class="button-row">
             <button class="btn-help" onclick="openHelpModal()">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                HELP
+                HELP & TERMS
             </button>
             <button onclick="calculateAndDisplay()">
                 <svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
@@ -914,8 +939,34 @@
 <div class="modal-overlay" id="helpModal">
     <div class="modal wide">
         <div class="modal-header">
-            <h2>User Guide & Instructions</h2>
+            <h2>User Guide & Terms of Use</h2>
             <button class="close-btn" onclick="closeHelpModal()">&times;</button>
+        </div>
+
+        <div class="help-section disclaimer-banner">
+            <h3>⚠️ Disclaimer & Terms of Use</h3>
+            <p><strong>For Personal Educational & Illustrative Use Only</strong><br>
+            This calculator is an informal tool designed solely for personal educational, testing, and illustrative purposes. The calculations and outputs generated are estimates based on user inputs and simplified mathematical models.</p>
+            
+            <p><strong>How This Tool SHOULD Be Used:</strong></p>
+            <ul>
+                <li>To explore hypothetical growth scenarios, compound interest concepts, and rough planning ideas.</li>
+                <li>To visualize how changing variables (such as time, contributions, or rate of return) might impact hypothetical outcomes over time.</li>
+            </ul>
+
+            <p style="margin-top: 10px;"><strong>How This Tool Should NOT Be Used:</strong></p>
+            <ul>
+                <li><strong>As Professional Advice:</strong> This tool does not provide financial, investment, tax, accounting, or legal advice. It does not consider individual financial circumstances, risk tolerance, or tax obligations.</li>
+                <li><strong>To Guarantee or Predict Future Performance:</strong> Past or projected results are hypothetical and do not guarantee, forecast, or predict actual future performance or investment returns.</li>
+                <li><strong>As the Basis for Real-World Financial Decisions:</strong> Do not make financial commitments, asset allocations, or investment choices based on this tool’s outputs.</li>
+            </ul>
+
+            <p style="margin-top: 10px;"><strong>Important Limitations:</strong></p>
+            <ul>
+                <li><strong>Simplifying Assumptions:</strong> Calculations assume constant, linear annual return models or randomized Gaussian volatility and do not perfectly reflect complex market mechanics.</li>
+                <li><strong>Fees and Taxes:</strong> Outputs do not account for individual tax liabilities, potential penalty structures, or personal expense adjustments, all of which reduce net real-world returns.</li>
+            </ul>
+            <p style="margin-top: 8px; font-weight: 700; color: var(--text-main);"><em>Always consult a qualified financial advisor, CPA, or fiduciary before making actual investment or financial decisions.</em></p>
         </div>
 
         <div class="help-section">
