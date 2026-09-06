@@ -168,6 +168,18 @@
             border: 1px solid var(--border);
         }
 
+        .predictions-controls-row {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+            background: var(--input-bg);
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
         .form-group {
             display: flex;
             flex-direction: column;
@@ -825,8 +837,43 @@
             <button class="close-btn" onclick="closePredictionsModal()">&times;</button>
         </div>
 
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
-            Weighted annualized projections are calculated from core 5-year averages (G: 3.90%, F: -0.20%, C: 12.80%, S: 6.20%, I: 10.70%) based on a $10,000 baseline.
+        <div class="predictions-controls-row">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="margin-bottom: 6px;">Monte Carlo Simulation:</label>
+                <div class="switch-container">
+                    <label class="switch">
+                        <input type="checkbox" id="monteCarloSwitch" onchange="renderPredictionsTable()">
+                        <span class="slider"></span>
+                    </label>
+                    <span id="monteCarloLabel" class="switch-label">OFF (Standard Return)</span>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="simulationAmountSelect" style="margin-bottom: 6px;">Simulation Portfolio Amount:</label>
+                <select id="simulationAmountSelect" onchange="renderPredictionsTable()">
+                    <option value="100000">$100,000</option>
+                    <option value="200000">$200,000</option>
+                    <option value="300000">$300,000</option>
+                    <option value="400000">$400,000</option>
+                    <option value="500000">$500,000</option>
+                    <option value="600000">$600,000</option>
+                    <option value="700000">$700,000</option>
+                    <option value="800000">$800,000</option>
+                    <option value="900000">$900,000</option>
+                    <option value="1000000">$1,000,000</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="help-section" style="margin-bottom: 16px;">
+            <p style="font-size: 0.85rem; margin: 0;">
+                <strong>What is a Monte Carlo Simulation?</strong> A Monte Carlo simulation is a mathematical technique that models future financial growth by applying random market volatility (stochastic sampling) to expected returns over time. Instead of assuming a fixed annual return every year, it introduces realistic variations based on each asset class's historical volatility to illustrate a range of potential portfolio outcomes.
+            </p>
+        </div>
+
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;" id="predictionsNotice">
+            Weighted annualized projections are calculated from core 5-year averages (G: 3.90%, F: -0.20%, C: 12.80%, S: 6.20%, I: 10.70%).
         </p>
         <table id="predictionsModalTable">
             <thead>
@@ -834,10 +881,10 @@
                     <th>L Fund</th>
                     <th>Risk Level</th>
                     <th>Gross Return</th>
-                    <th id="colHeader1Yr">Estimated 1-Yr Growth (Per $10k)</th>
-                    <th id="colHeader5Yr">Estimated 5-Yr Growth (Per $10k)</th>
-                    <th id="colHeader10Yr">Estimated 10-Yr Growth (Per $10k)</th>
-                    <th id="colHeader20Yr">Estimated 20-Yr Growth (Per $10k)</th>
+                    <th id="colHeader1Yr">Estimated 1-Yr Growth</th>
+                    <th id="colHeader5Yr">Estimated 5-Yr Growth</th>
+                    <th id="colHeader10Yr">Estimated 10-Yr Growth</th>
+                    <th id="colHeader20Yr">Estimated 20-Yr Growth</th>
                 </tr>
             </thead>
             <tbody id="predictionsTable">
@@ -893,8 +940,9 @@
         </div>
 
         <div class="help-section">
-            <h3>4. Long-Term Return Predictions</h3>
-            <p>Click <strong>Return Predictions</strong> to project growth over 1, 5, 10, and 20 years across all L Funds based on historical benchmark returns and a standard $10,000 portfolio baseline.</p>
+            <h3>4. Long-Term Return Predictions & Monte Carlo Simulation</h3>
+            <p>Click <strong>Return Predictions</strong> to project growth over 1, 5, 10, and 20 years across all L Funds based on historical benchmark returns and customizable portfolio dollar amounts ($100,000 to $1,000,000).</p>
+            <p><strong>Monte Carlo Simulation:</strong> When enabled, the model simulates random year-to-year market fluctuations using Gaussian noise scaled to each asset class's standard deviation (volatility). This helps simulate realistic market ups and downs rather than relying on a static, smooth annual interest rate.</p>
         </div>
 
         <div class="modal-actions">
@@ -919,6 +967,8 @@
     };
 
     const coreFund5YrAvg = { G: 3.90, F: -0.20, C: 12.80, S: 6.20, I: 10.70 };
+    const coreFundVolatilities = { G: 0.80, F: 5.50, C: 15.20, S: 18.50, I: 16.50 };
+
     let downloadedAllocations = JSON.parse(JSON.stringify(manualAllocations));
     let isDownloadedDataLoaded = false;
     let liveSyncTimer = null;
@@ -1158,20 +1208,49 @@
     function openPredictionsModal() { renderPredictionsTable(); document.getElementById("predictionsModal").classList.add("active"); }
     function closePredictionsModal() { document.getElementById("predictionsModal").classList.remove("active"); }
 
-    function projectCompoundedValue(startVal, annualRate, years) {
+    function getRandomGaussian() {
+        let u = 0, v = 0;
+        while(u === 0) u = Math.random();
+        while(v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function projectCompoundedValue(startVal, annualRate, years, isMonteCarlo = false, portfolioAlloc = null) {
         let currentVal = startVal;
-        const r = annualRate / 100;
+
+        if (!isMonteCarlo || !portfolioAlloc) {
+            const r = annualRate / 100;
+            for (let i = 0; i < years; i++) {
+                currentVal = currentVal * (1 + r);
+            }
+            return Math.round(currentVal);
+        }
+
+        let portfolioVolatility = 0;
+        Object.keys(coreFundVolatilities).forEach(key => {
+            portfolioVolatility += (portfolioAlloc[key] / 100) * coreFundVolatilities[key];
+        });
 
         for (let i = 0; i < years; i++) {
-            currentVal = currentVal * (1 + r);
+            const sampledRate = (annualRate + getRandomGaussian() * portfolioVolatility) / 100;
+            currentVal = currentVal * (1 + sampledRate);
         }
-        return Math.round(currentVal);
+        return Math.round(Math.max(0, currentVal));
     }
 
     function renderPredictionsTable() {
         const selectedFund = document.getElementById("lFundSelect").value;
         const activeAllocations = getActiveAllocations();
-        const baseVal = 10000;
+        const baseVal = parseFloat(document.getElementById("simulationAmountSelect").value) || 100000;
+        const isMonteCarlo = document.getElementById("monteCarloSwitch").checked;
+
+        document.getElementById("monteCarloLabel").innerText = isMonteCarlo ? "ON (Simulated Volatility)" : "OFF (Standard Return)";
+        
+        const formattedBaseStr = `$${baseVal.toLocaleString('en-US')}`;
+        document.getElementById("colHeader1Yr").innerText = `Est. 1-Yr Growth (${formattedBaseStr})`;
+        document.getElementById("colHeader5Yr").innerText = `Est. 5-Yr Growth (${formattedBaseStr})`;
+        document.getElementById("colHeader10Yr").innerText = `Est. 10-Yr Growth (${formattedBaseStr})`;
+        document.getElementById("colHeader20Yr").innerText = `Est. 20-Yr Growth (${formattedBaseStr})`;
 
         const tbody = document.getElementById("predictionsTable");
         tbody.innerHTML = "";
@@ -1187,10 +1266,10 @@
             const stocksPct = alloc.C + alloc.S + alloc.I;
             const risk = calculateRiskLevel(stocksPct);
 
-            const val1Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 1);
-            const val5Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 5);
-            const val10Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 10);
-            const val20Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 20);
+            const val1Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 1, isMonteCarlo, alloc);
+            const val5Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 5, isMonteCarlo, alloc);
+            const val10Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 10, isMonteCarlo, alloc);
+            const val20Yr = projectCompoundedValue(baseVal, grossAnnualReturn, 20, isMonteCarlo, alloc);
 
             const isSelected = (fundName === selectedFund);
             const row = document.createElement("tr");
